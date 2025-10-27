@@ -1,1 +1,155 @@
+-- // 🔦 Highlight System + 100+ Color Picker GUI
+-- by SkyeMoz + ZynixMoz
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+
+-- // Sound
+local ClickSound = Instance.new("Sound")
+ClickSound.SoundId = "rbxassetid://535716488"
+ClickSound.Volume = 1
+ClickSound.Parent = game.SoundService
+local function playClick() ClickSound:Play() end
+
+-- // Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HighlightColorPicker"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 999999999
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local overlay = Instance.new("Frame")
+overlay.Size = UDim2.new(1, 0, 1, 0)
+overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+overlay.BackgroundTransparency = 0.5
+overlay.ZIndex = 50
+overlay.Parent = screenGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 350, 0, 280)
+mainFrame.Position = UDim2.new(0.5, -175, 0.5, -140)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.BorderSizePixel = 0
+mainFrame.ZIndex = 100
+mainFrame.Parent = overlay
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+title.BorderSizePixel = 0
+title.Text = "🎨 Choose Outline Color"
+title.Font = Enum.Font.Arcade
+title.TextSize = 22
+title.TextColor3 = Color3.new(1, 1, 1)
+title.ZIndex = 101
+title.Parent = mainFrame
+
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -20, 1, -50)
+scroll.Position = UDim2.new(0, 10, 0, 40)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 1200)
+scroll.ScrollBarThickness = 8
+scroll.BackgroundTransparency = 1
+scroll.ZIndex = 100
+scroll.Parent = mainFrame
+
+local uiGrid = Instance.new("UIGridLayout")
+uiGrid.CellSize = UDim2.new(0, 40, 0, 40)
+uiGrid.CellPadding = UDim2.new(0, 6, 0, 6)
+uiGrid.Parent = scroll
+
+-- // 100+ Color Palette
+local colors = {}
+for r = 0, 255, 51 do
+	for g = 0, 255, 51 do
+		for b = 0, 255, 51 do
+			table.insert(colors, Color3.fromRGB(r, g, b))
+		end
+	end
+end
+
+-- // Color Selection
+local chosenColor = nil
+for _, c in ipairs(colors) do
+	local btn = Instance.new("TextButton")
+	btn.BackgroundColor3 = c
+	btn.Text = ""
+	btn.BorderSizePixel = 0
+	btn.AutoButtonColor = false
+	btn.ZIndex = 105
+	btn.Parent = scroll
+	btn.MouseButton1Click:Connect(function()
+		playClick()
+		chosenColor = c
+		screenGui:Destroy()
+		startHighlightSystem(chosenColor)
+	end)
+end
+
+-- // Highlight system starts AFTER color pick
+function startHighlightSystem(outlineColor)
+	local highlight = Instance.new("Highlight")
+	highlight.FillTransparency = 1
+	highlight.OutlineTransparency = 0.3
+	highlight.OutlineColor = outlineColor
+	highlight.Parent = workspace
+
+	local nameGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+	nameGui.Name = "PlayerHighlightName"
+	nameGui.DisplayOrder = 999999999
+	nameGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(0, 200, 0, 30)
+	nameLabel.BackgroundTransparency = 0.6
+	nameLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	nameLabel.TextColor3 = Color3.new(1, 1, 1)
+	nameLabel.TextScaled = true
+	nameLabel.Font = Enum.Font.Arcade
+	nameLabel.Visible = false
+	nameLabel.ZIndex = 999
+	nameLabel.Parent = nameGui
+
+	local DISTANCE_LIMIT = 15
+	RunService.RenderStepped:Connect(function()
+		local rayOrigin = cam.CFrame.Position
+		local rayDirection = cam.CFrame.LookVector * 100
+		local params = RaycastParams.new()
+		params.FilterDescendantsInstances = {player.Character}
+		params.FilterType = Enum.RaycastFilterType.Blacklist
+
+		local result = workspace:Raycast(rayOrigin, rayDirection, params)
+		if result and result.Instance then
+			local target = result.Instance
+			local model = target:FindFirstAncestorOfClass("Model") or target
+			local head = model:FindFirstChild("Head")
+			local pos = head and head.Position or model:GetPivot().Position
+			local dist = (pos - player.Character.Head.Position).Magnitude
+			if dist <= DISTANCE_LIMIT then
+				highlight.Adornee = model
+				highlight.Enabled = true
+				local targetPlayer = Players:GetPlayerFromCharacter(model)
+				if targetPlayer then
+					nameLabel.Text = "@" .. targetPlayer.Name
+					local screenPos, onScreen = cam:WorldToViewportPoint(pos + Vector3.new(0, 1.5, 0))
+					nameLabel.Visible = onScreen
+					if onScreen then
+						nameLabel.Position = UDim2.new(0, screenPos.X - 100, 0, screenPos.Y)
+					end
+				else
+					nameLabel.Visible = false
+				end
+			else
+				highlight.Enabled = false
+				nameLabel.Visible = false
+			end
+		else
+			highlight.Enabled = false
+			nameLabel.Visible = false
+		end
+	end)
+end
