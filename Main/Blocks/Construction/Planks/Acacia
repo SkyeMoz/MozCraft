@@ -35,7 +35,7 @@ local PLACE_SOUND_ID = "rbxassetid://6496157434"
 local DELETE_SOUND_ID = "rbxassetid://6496157434"
 
 -- GUI ICONS (optional)
-local ICON_PLACE = "rbxassetid://87182246412476"
+local ICON_PLACE = "rbxassetid://8083711385"
 local ICON_BREAK = "rbxassetid://81586559343799"
 local ICON_LOCK_ON = "rbxassetid://13967666260"
 local ICON_LOCK_OFF = "rbxassetid://13967667066"
