@@ -208,7 +208,7 @@ local Button = Tab:CreateButton({
    Name = "HoneyComb Block",
    Callback = function()
    PlayClick()
-   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Items/Jellies/Honeycomb",true))()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Items/Jellies/HoneyComb",true))()
    end,
 })
 
