@@ -16,7 +16,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 
 -- TOOL CREATION (local dev tool)
 local tool = Instance.new("Tool")
-tool.Name = "Block Placer"
+tool.Name = "Mangrove Block"
 tool.RequiresHandle = false
 tool.TextureId = "rbxassetid://116941407309648"
 tool.Parent = player:WaitForChild("Backpack")
@@ -35,7 +35,7 @@ local PLACE_SOUND_ID = "rbxassetid://6496157434"
 local DELETE_SOUND_ID = "rbxassetid://6496157434"
 
 -- GUI ICONS (optional)
-local ICON_PLACE = "rbxassetid://139457494445607"
+local ICON_PLACE = "rbxassetid://116941407309648"
 local ICON_BREAK = "rbxassetid://81586559343799"
 local ICON_LOCK_ON = "rbxassetid://13967666260"
 local ICON_LOCK_OFF = "rbxassetid://13967667066"
