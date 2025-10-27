@@ -78,7 +78,7 @@ local Button = Tab:CreateButton({
    end,
 })
 local Section = Tab:CreateSection("Updates And Announcements")
-local Paragraph = Tab:CreateParagraph({Title = "The Blocks Update", Content = "Mozcraft V2 Has arrived! 🚀 Pc is now supported! With Various of New Blocks. KeyBinds for PC! E = PLACE, R = DELETE, LEFT CLICK = PLACE, RIGHT CLICK = DELETE, Q = TOGGLE SHIFTLOCK"})
+local Paragraph = Tab:CreateParagraph({Title = "The Blocks Update", Content = "Mozcraft V2 Has arrived! ðŸš€ Pc is now supported! With Various of New Blocks. KeyBinds for PC! E = PLACE, R = DELETE, LEFT CLICK = PLACE, RIGHT CLICK = DELETE, Q = TOGGLE SHIFTLOCK"})
 local Tab = Window:CreateTab("Construction", 108217791045618) 
 local Section = Tab:CreateSection("Plank Blocks")
 local Button = Tab:CreateButton({
@@ -151,3 +151,70 @@ local Button = Tab:CreateButton({
    loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Construction/Planks/Mangrove",true))()
    end,
 })
+local Tab = Window:CreateTab("Nature", 102726313359152) 
+local Section = Tab:CreateSection("Ground")
+local Button = Tab:CreateButton({
+   Name = "Bedrock",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Nature/Bedrock",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Grass Block",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Nature/Grass",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Stone Block",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Nature/Stone",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Dirt",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Nature/Dirt",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Snow Grass Block",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Nature/SnowGrass",true))()
+   end,
+})
+local Tab = Window:CreateTab("Items",126494981034661 ) 
+local Section = Tab:CreateSection("Slimy/Jellies")
+local Button = Tab:CreateButton({
+   Name = "Slime Block",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Items/Jellies/Slime",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Honey Block",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Items/Jellies/Honey",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "HoneyComb Block",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Blocks/Items/Jellies/Honeycomb",true))()
+   end,
+})
+
+local Tab = Window:CreateTab("Equipments", 17287512985) 
+local Section = Tab:CreateSection("Diamond")
+
+
+local Tab = Window:CreateTab("Settings", 7066555021) 
+local Section = Tab:CreateSection("In-Game Map")
