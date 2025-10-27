@@ -16,7 +16,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 
 -- TOOL CREATION (local dev tool)
 local tool = Instance.new("Tool")
-tool.Name = "Warped  Block"
+tool.Name = "Bedrock Block"
 tool.RequiresHandle = false
 tool.TextureId = "rbxassetid://8083974025"
 tool.Parent = player:WaitForChild("Backpack")
