@@ -1,0 +1,299 @@
+-- Executor-ready infinite chunk generator (no block limit)
+-- Paste into your executor (client-side)
+
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+repeat task.wait() until player
+
+-- CONFIG
+local BLOCK_SIZE = Vector3.new(4,4,4)        
+local CHUNK_BLOCKS = 16                     
+local CHUNK_STUD = CHUNK_BLOCKS * BLOCK_SIZE.X 
+local FREQUENCY_SCALE = 120                 
+local AMPLITUDE = 8                         
+local BASE_HEIGHT = 6                        
+local GROUND_Y = 0                           
+local SEED = math.random()
+
+-- Offsets
+local CHUNK_OFFSETS = {
+    Vector3.new(0,0,0),
+    Vector3.new(CHUNK_STUD,0,0),
+    Vector3.new(-CHUNK_STUD,0,0),
+    Vector3.new(0,0,CHUNK_STUD),
+    Vector3.new(0,0,-CHUNK_STUD),
+    Vector3.new(CHUNK_STUD,0,CHUNK_STUD),
+    Vector3.new(-CHUNK_STUD,0,CHUNK_STUD),
+    Vector3.new(CHUNK_STUD,0,-CHUNK_STUD),
+    Vector3.new(-CHUNK_STUD,0,-CHUNK_STUD),
+}
+
+-- SWAPPED GRASS/STONE TEXTURES
+local TEXTURE_TOP_GRASS = "rbxassetid://137201886627224"
+local TEXTURE_SIDES_GRASS = "rbxassetid://137201886627224"
+local TEXTURE_BOTTOM_GRASS = "rbxassetid:/137201886627224"
+local TEXTURE_TOP_STONE = "rbxassetid://103125765390252"
+local TEXTURE_SIDES_STONE = "rbxassetid://103125765390252"
+local TEXTURE_BOTTOM_STONE = "rbxassetid://103125765390252"
+
+-- State
+local generatedMap = {}     
+local generatedList = {}    
+local generating = false
+
+-- Helpers
+local function addTextures(part, top, sides, bottom)
+    for _, face in ipairs({Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right}) do
+        local tex = Instance.new("Texture")
+        tex.Texture = sides
+        tex.Face = face
+        tex.StudsPerTileU = 4
+        tex.StudsPerTileV = 4
+        tex.Parent = part
+    end
+    local topTex = Instance.new("Texture")
+    topTex.Texture = top
+    topTex.Face = Enum.NormalId.Top
+    topTex.StudsPerTileU = 4
+    topTex.StudsPerTileV = 4
+    topTex.Parent = part
+
+    local bottomTex = Instance.new("Texture")
+    bottomTex.Texture = bottom
+    bottomTex.Face = Enum.NormalId.Bottom
+    bottomTex.StudsPerTileU = 4
+    bottomTex.StudsPerTileV = 4
+    bottomTex.Parent = part
+end
+
+local function makeChunkName(originStud)
+    return ("chunk_%d_%d"):format(math.floor(originStud.X), math.floor(originStud.Z))
+end
+
+local function normalizeChunkOrigin(studPos)
+    local cx = math.floor(studPos.X / CHUNK_STUD) * CHUNK_STUD
+    local cz = math.floor(studPos.Z / CHUNK_STUD) * CHUNK_STUD
+    return Vector3.new(cx, 0, cz)
+end
+
+local function clearWorld()
+    for _, model in ipairs(generatedList) do
+        if model and model.Parent then
+            model:Destroy()
+        end
+    end
+    generatedList = {}
+    generatedMap = {}
+end
+
+local function generateChunk(chunkOriginStud, dirtDepth, stoneDepth)
+    local chunkOrigin = normalizeChunkOrigin(chunkOriginStud)
+    local chunkName = makeChunkName(chunkOrigin)
+    if generatedMap[chunkName] then return end
+    generatedMap[chunkName] = true
+
+    local chunkModel = Instance.new("Model")
+    chunkModel.Name = chunkName
+    chunkModel.Parent = workspace
+    table.insert(generatedList, chunkModel)
+
+    for bx = 0, CHUNK_BLOCKS-1 do
+        for bz = 0, CHUNK_BLOCKS-1 do
+            local worldX = chunkOrigin.X + bx * BLOCK_SIZE.X
+            local worldZ = chunkOrigin.Z + bz * BLOCK_SIZE.Z
+            local noiseX = (worldX) / FREQUENCY_SCALE
+            local noiseZ = (worldZ) / FREQUENCY_SCALE
+            local h = BASE_HEIGHT + math.noise(noiseX, SEED, noiseZ) * AMPLITUDE
+            local topBlock = math.max(1, math.floor(h))
+            local totalHeight = topBlock + (dirtDepth or 0) + (stoneDepth or 0)
+
+            for by = 1, totalHeight do
+                local part = Instance.new("Part")
+                part.Size = BLOCK_SIZE
+                part.Anchored = true
+                part.CanCollide = true
+                local posX = worldX + BLOCK_SIZE.X/2
+                local posY = GROUND_Y + (by - 1) * BLOCK_SIZE.Y + BLOCK_SIZE.Y/2
+                local posZ = worldZ + BLOCK_SIZE.Z/2
+                part.CFrame = CFrame.new(posX, posY, posZ)
+                part.Name = "Block"
+                part.Parent = chunkModel
+
+                if by == topBlock then
+                    addTextures(part, TEXTURE_TOP_GRASS, TEXTURE_SIDES_GRASS, TEXTURE_BOTTOM_GRASS)
+                elseif by > topBlock and by <= topBlock + dirtDepth then
+                    addTextures(part, TEXTURE_TOP_GRASS, TEXTURE_SIDES_GRASS, TEXTURE_BOTTOM_GRASS)
+                else
+                    addTextures(part, TEXTURE_TOP_STONE, TEXTURE_SIDES_STONE, TEXTURE_BOTTOM_STONE)
+                end
+            end
+        end
+        task.wait(0)
+    end
+end
+
+-- GUI
+
+if CoreGui:FindFirstChild("MineGenGUI") then
+    CoreGui.MineGenGUI:Destroy()
+    task.wait(0.03)
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MineGenGUI"
+screenGui.Parent = CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,280,0,250)
+frame.Position = UDim2.new(0.5,-140,0.05,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+local fc = Instance.new("UICorner", frame); fc.CornerRadius = UDim.new(0,12)
+
+local bgGradient = Instance.new("UIGradient", frame)
+bgGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(40,40,40)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20,20,20))
+}
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,36)
+title.Position = UDim2.new(0,0,0,0)
+title.BackgroundTransparency = 1
+title.Text = "Desert Terrain MozGen Beta"
+title.Font = Enum.Font.Arcade
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextScaled = true
+
+-- Button creator
+local function makeButton(text, x, y, w, h, color)
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(0,w,0,h)
+    btn.Position = UDim2.new(0,x,0,y)
+    btn.Text = text
+    btn.Font = Enum.Font.Arcade
+    btn.TextScaled = true
+    btn.BackgroundColor3 = color
+    btn.BorderSizePixel = 0
+    local c = Instance.new("UICorner", btn); c.CornerRadius = UDim.new(0,8)
+    return btn
+end
+
+local startBtn = makeButton("Generate", 12, 48, 120, 36, Color3.fromRGB(0,170,0))
+local stopBtn = makeButton("Stop", 148, 48, 120, 36, Color3.fromRGB(170,0,0))
+local clearBtn = makeButton("Clear World", 12, 196, 256, 36, Color3.fromRGB(90,90,90))
+
+local function makeLabel(txt, x, y)
+    local l = Instance.new("TextLabel", frame)
+    l.Size = UDim2.new(0,130,0,20)
+    l.Position = UDim2.new(0,x,0,y)
+    l.BackgroundTransparency = 1
+    l.Text = txt
+    l.Font = Enum.Font.Arcade
+    l.TextColor3 = Color3.fromRGB(255,255,255)
+    l.TextSize = 14
+    return l
+end
+
+local function makeBox(x, y, w, h, placeholder)
+    local box = Instance.new("TextBox", frame)
+    box.Size = UDim2.new(0,w,0,h)
+    box.Position = UDim2.new(0,x,0,y)
+    box.PlaceholderText = placeholder
+    box.Text = ""
+    box.Font = Enum.Font.Arcade
+    box.TextColor3 = Color3.fromRGB(255,255,255)
+    box.BackgroundColor3 = Color3.fromRGB(35,35,35)
+    box.ClearTextOnFocus = false
+    local c = Instance.new("UICorner", box); c.CornerRadius = UDim.new(0,6)
+    return box
+end
+
+makeLabel("Sand depth", 12, 88)
+local dirtBox = makeBox(12,106,120,28,"3")
+makeLabel("SandStone", 148, 88)
+local stoneBox = makeBox(148,106,120,28,"2")
+makeLabel("Chunks", 12, 136)
+local chunksBox = makeBox(12,154,120,28,"1")
+makeLabel("Seconds", 148, 136)
+local secondsBox = makeBox(148,154,120,28,"0.2")
+
+-- Draggable frame (PC + Mobile)
+local dragging = false
+local dragStart, startPos
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Teleport & generator logic remain identical
+local function teleportAbove(posStud)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = player.Character.HumanoidRootPart
+        hrp.CFrame = CFrame.new(posStud.X + CHUNK_STUD/2, CHUNK_STUD/2 + 50, posStud.Z + CHUNK_STUD/2)
+    end
+end
+
+startBtn.MouseButton1Click:Connect(function()
+    generating = true
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local origin = normalizeChunkOrigin(hrp.Position)
+        teleportAbove(origin)
+    end
+end)
+
+stopBtn.MouseButton1Click:Connect(function() generating = false end)
+clearBtn.MouseButton1Click:Connect(function() generating = false; clearWorld() end)
+
+spawn(function()
+    while true do
+        if generating and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            local playerChunkOrigin = normalizeChunkOrigin(hrp.Position)
+            local dirtDepth = math.max(0, tonumber(dirtBox.Text) or tonumber(dirtBox.PlaceholderText) or 3)
+            local stoneDepth = math.max(0, tonumber(stoneBox.Text) or tonumber(stoneBox.PlaceholderText) or 2)
+            local chunksPerBatch = math.max(1, tonumber(chunksBox.Text) or tonumber(chunksBox.PlaceholderText) or 1)
+            local secondsPerBatch = math.max(0, tonumber(secondsBox.Text) or tonumber(secondsBox.PlaceholderText) or 0.2)
+
+            for i = 1, chunksPerBatch do
+                for _, offset in ipairs(CHUNK_OFFSETS) do
+                    local chunkOrigin = playerChunkOrigin + offset
+                    local chunkName = makeChunkName(chunkOrigin)
+                    if not generatedMap[chunkName] then
+                        generateChunk(chunkOrigin, dirtDepth, stoneDepth)
+                        task.wait(0.01)
+                    end
+                end
+                task.wait(secondsPerBatch)
+            end
+        end
+        task.wait(0.15)
+    end
+end)
