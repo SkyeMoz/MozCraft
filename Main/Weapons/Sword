@@ -1,0 +1,277 @@
+-- Client-side Fake Damage Tool (upright mesh + fake death sound + 2s respawn)
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local cam = workspace.CurrentCamera
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- TOOL SETUP
+local tool = Instance.new("Tool")
+tool.Name = "Pickaxe"
+tool.RequiresHandle = true
+tool.CanBeDropped = false
+tool.TextureId = "rbxassetid://90297495789346"
+tool.Parent = player.Backpack
+
+local handle = Instance.new("Part")
+handle.Name = "Handle"
+handle.Size = Vector3.new(1,1,1)
+handle.Anchored = false
+handle.CanCollide = false
+handle.Parent = tool
+
+local mesh = Instance.new("SpecialMesh")
+mesh.MeshType = Enum.MeshType.FileMesh
+mesh.MeshId = "rbxassetid://8827558932"  -- your new mesh
+mesh.TextureId = "rbxassetid://8827665405"
+mesh.Scale = Vector3.new(0.2,0.6,0.2) -- smaller and more vertical
+mesh.Parent = handle
+
+-- Rotate handle/mesh vertically upright
+handle.Orientation = Vector3.new(0,0,0)
+
+-- GUI SETUP
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FakeDamageGUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = PlayerGui
+
+local ICON_HIT = "rbxassetid://81586559343799"
+local function makeIconButton(imageId,pos)
+    local btn = Instance.new("ImageButton")
+    btn.Size = UDim2.new(0,60,0,60)
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    btn.BackgroundTransparency = 0.3
+    btn.Image = imageId
+    btn.ScaleType = Enum.ScaleType.Fit
+    btn.Parent = screenGui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1,0)
+    corner.Parent = btn
+    return btn
+end
+local hitButton = makeIconButton(ICON_HIT, UDim2.new(1,-180,1,-180))
+
+-- Kill message frame
+local killMsgFrame = Instance.new("Frame")
+killMsgFrame.Size = UDim2.new(0,300,0,40)
+killMsgFrame.Position = UDim2.new(0,10,0,10)
+killMsgFrame.BackgroundColor3 = Color3.new(0,0,0)
+killMsgFrame.BackgroundTransparency = 0.5
+killMsgFrame.Visible = false
+killMsgFrame.Parent = PlayerGui
+
+local killMsgLabel = Instance.new("TextLabel")
+killMsgLabel.Size = UDim2.new(1,0,1,0)
+killMsgLabel.BackgroundTransparency = 1
+killMsgLabel.TextColor3 = Color3.new(1,1,1)
+killMsgLabel.Font = Enum.Font.Arcade
+killMsgLabel.TextScaled = true
+killMsgLabel.TextStrokeTransparency = 0
+killMsgLabel.Parent = killMsgFrame
+
+-- CONFIG
+local DISTANCE_LIMIT = 15
+local shoulderMotor
+local handleWeld
+local defaultC0
+local COOLDOWN = 0.4
+local lastHit = 0
+local DAMAGE_AMOUNT = 20
+local FAKE_DEATH_HEALTH = 0
+local RESPAWN_TIME = 2
+local equipped = false
+
+-- ARM ANIMATION
+local function findRightShoulderMotor(character)
+    if not character then return nil end
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("Motor6D") then
+            local n = obj.Name:lower()
+            if n:find("rightshoulder") or n:find("right shoulder") then
+                return obj
+            end
+        end
+    end
+    return nil
+end
+
+local function playArmAnimation()
+    if not equipped then return end
+    local character = player.Character
+    if not character then return end
+    shoulderMotor = shoulderMotor or findRightShoulderMotor(character)
+    local motor = shoulderMotor
+    local weld = handleWeld
+    if not motor then return end
+
+    local tweenInfoUp = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    local tweenInfoDown = TweenInfo.new(0.18, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+
+    local upC0 = defaultC0 * CFrame.Angles(math.rad(-25),0,0) * CFrame.new(0,0.05,0)
+    local upTween = TweenService:Create(motor, tweenInfoUp, {C0 = upC0})
+    local downTween = TweenService:Create(motor, tweenInfoDown, {C0 = defaultC0})
+
+    upTween:Play()
+    upTween.Completed:Wait()
+    downTween:Play()
+
+    if weld then
+        local orig = weld.C0
+        local up = orig * CFrame.new(0,0.08,0) * CFrame.Angles(math.rad(-10),0,0)
+        local upTw = TweenService:Create(weld, tweenInfoUp, {C0 = up})
+        local downTw = TweenService:Create(weld, tweenInfoDown, {C0 = orig})
+        upTw:Play()
+        upTw.Completed:Wait()
+        downTw:Play()
+    end
+end
+
+-- FAKE DAMAGE + FAKE DEATH + 2s RESPAWN + KILL MSG
+local function fakeDamagePlayer(targetPlayer)
+    if not equipped then return end
+    if not targetPlayer or targetPlayer == player then return end
+    local character = targetPlayer.Character
+    if not character then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+    if not rootPart then return end
+
+    -- Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = character
+    highlight.FillColor = Color3.fromRGB(255,0,0)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 1
+    highlight.Parent = character
+
+    -- Hit sound
+    local hitSound = Instance.new("Sound")
+    hitSound.SoundId = "rbxassetid://8766809464"
+    hitSound.Volume = 1
+    hitSound.Parent = rootPart
+    hitSound:Play()
+
+    -- Fake damage
+    humanoid.Health = math.max(0, humanoid.Health - DAMAGE_AMOUNT)
+
+    if humanoid.Health <= FAKE_DEATH_HEALTH then
+        humanoid.Health = 0
+
+        -- Kill message
+        killMsgLabel.Text = "@"..player.Name.." killed @"..targetPlayer.Name
+        killMsgFrame.Visible = true
+        task.delay(3,function()
+            killMsgFrame.Visible = false
+        end)
+
+        -- Play Roblox default death sound
+        local deathSound = Instance.new("Sound")
+        deathSound.SoundId = "rbxassetid://31760113" -- default death sound
+        deathSound.Volume = 1
+        deathSound.Parent = rootPart
+        deathSound:Play()
+
+        -- Make body disappear
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+            end
+        end
+
+        -- Respawn after 2 seconds
+        task.delay(RESPAWN_TIME, function()
+            if humanoid and humanoid.Parent then
+                humanoid.Health = humanoid.MaxHealth
+                for _, part in ipairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = 0
+                    end
+                end
+            end
+        end)
+    end
+
+    -- Remove highlight after 0.5s
+    task.delay(0.5,function()
+        if highlight and highlight.Parent then
+            highlight:Destroy()
+        end
+    end)
+end
+
+-- FIRE FAKE DAMAGE RAY
+local function hitTarget()
+    if not equipped then return end
+    if tick() - lastHit < COOLDOWN then return end
+    lastHit = tick()
+
+    local rayOrigin = cam.CFrame.Position
+    local rayDirection = cam.CFrame.LookVector * 100
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {player.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local raycastResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+    if not raycastResult then return end
+
+    local hitInstance = raycastResult.Instance
+    if not hitInstance then return end
+
+    local character = hitInstance:FindFirstAncestorOfClass("Model")
+    if character then
+        local targetPlayer = Players:GetPlayerFromCharacter(character)
+        if targetPlayer then
+            local distance = (raycastResult.Position - cam.CFrame.Position).Magnitude
+            if distance > DISTANCE_LIMIT then return end
+            fakeDamagePlayer(targetPlayer)
+            playArmAnimation()
+        end
+    end
+end
+
+-- Mouse click + GUI
+local mouse = player:GetMouse()
+mouse.Button1Down:Connect(function()
+    if equipped then
+        hitTarget()
+    end
+end)
+hitButton.MouseButton1Click:Connect(hitTarget)
+
+-- EQUIP / UNEQUIP
+tool.Equipped:Connect(function()
+    equipped = true
+    screenGui.Enabled = true
+    local character = player.Character
+    if not character then return end
+
+    shoulderMotor = findRightShoulderMotor(character)
+    if not shoulderMotor then return end
+    defaultC0 = shoulderMotor.C0
+
+    local rightHand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+    if rightHand then
+        handleWeld = Instance.new("Weld")
+        handleWeld.Part0 = rightHand
+        handleWeld.Part1 = handle
+        handleWeld.C0 = CFrame.Angles(0,0,0) -- vertical upright
+        handleWeld.Parent = handle
+    end
+end)
+
+tool.Unequipped:Connect(function()
+    equipped = false
+    screenGui.Enabled = false
+    if shoulderMotor and defaultC0 then
+        local tweenReset = TweenService:Create(shoulderMotor, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {C0 = defaultC0})
+        tweenReset:Play()
+    end
+    if handleWeld and handleWeld.Parent then
+        handleWeld:Destroy()
+    end
+end)
