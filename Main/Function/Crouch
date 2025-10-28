@@ -1,0 +1,119 @@
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+-- SETTINGS
+local CROUCH_HIP_OFFSET = -1.5   -- lower body
+local CROUCH_WALK_SPEED = 6
+local BODY_BEND_ANGLE = 25       -- positive = backward lean
+local NECK_COMPENSATE_ANGLE = 5
+local crouchToggle = false
+
+-- GUI BUTTON
+local function createCrouchGUI(playerGui)
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "CrouchUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.IgnoreGuiInset = true
+
+	local button = Instance.new("ImageButton")
+	button.Parent = screenGui
+	button.Size = UDim2.new(0, 70, 0, 70)
+	button.Position = UDim2.new(0.05, 0, 0.5, -35)
+	button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	button.BackgroundTransparency = 0.3
+	button.BorderSizePixel = 0
+	button.Image = "rbxassetid://18256199240"
+
+	local circle = Instance.new("UICorner")
+	circle.CornerRadius = UDim.new(0.5, 0)
+	circle.Parent = button
+
+	screenGui.Parent = playerGui
+	return button
+end
+
+-- JOINTS
+local lowerTorsoMotor, upperTorsoMotor, neckMotor
+local origLowerC0, origUpperC0, origNeckC0
+
+local function setupJoints(character)
+	lowerTorsoMotor, upperTorsoMotor, neckMotor = nil, nil, nil
+	origLowerC0, origUpperC0, origNeckC0 = nil, nil, nil
+
+	for _, v in ipairs(character:GetDescendants()) do
+		if v:IsA("Motor6D") then
+			if v.Name == "Root" or v.Name == "RootJoint" then
+				lowerTorsoMotor = v
+				origLowerC0 = v.C0
+			elseif v.Name == "Waist" then
+				upperTorsoMotor = v
+				origUpperC0 = v.C0
+			elseif v.Name == "Neck" then
+				neckMotor = v
+				origNeckC0 = v.C0
+			end
+		end
+	end
+end
+
+-- CROUCH
+local function crouch(humanoid)
+	if humanoid then
+		humanoid.HipHeight = humanoid.HipHeight + CROUCH_HIP_OFFSET
+		humanoid.WalkSpeed = CROUCH_WALK_SPEED
+	end
+
+	if lowerTorsoMotor and origLowerC0 then
+		lowerTorsoMotor.C0 = origLowerC0 * CFrame.Angles(math.rad(BODY_BEND_ANGLE), 0, 0)
+	end
+	if upperTorsoMotor and origUpperC0 then
+		upperTorsoMotor.C0 = origUpperC0 * CFrame.Angles(math.rad(BODY_BEND_ANGLE), 0, 0)
+	end
+	if neckMotor and origNeckC0 then
+		neckMotor.C0 = origNeckC0 * CFrame.Angles(math.rad(BODY_BEND_ANGLE + NECK_COMPENSATE_ANGLE), 0, 0)
+	end
+end
+
+local function uncrouch(humanoid)
+	if humanoid then
+		humanoid.HipHeight = humanoid.HipHeight - CROUCH_HIP_OFFSET
+		humanoid.WalkSpeed = 16
+	end
+
+	if lowerTorsoMotor and origLowerC0 then lowerTorsoMotor.C0 = origLowerC0 end
+	if upperTorsoMotor and origUpperC0 then upperTorsoMotor.C0 = origUpperC0 end
+	if neckMotor and origNeckC0 then neckMotor.C0 = origNeckC0 end
+end
+
+-- CHARACTER SETUP
+local function onCharacterAdded(character)
+	local humanoid = character:WaitForChild("Humanoid")
+	setupJoints(character)
+
+	local playerGui = player:WaitForChild("PlayerGui")
+	local crouchButton = createCrouchGUI(playerGui)
+
+	local function toggleCrouch()
+		crouchToggle = not crouchToggle
+		if crouchToggle then
+			crouchButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+			crouch(humanoid)
+		else
+			crouchButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+			uncrouch(humanoid)
+		end
+	end
+
+	crouchButton.MouseButton1Click:Connect(toggleCrouch)
+	UIS.InputBegan:Connect(function(input, processed)
+		if not processed and input.KeyCode == Enum.KeyCode.C then
+			toggleCrouch()
+		end
+	end)
+
+	if crouchToggle then crouch(humanoid) end
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+if player.Character then onCharacterAdded(player.Character) end
