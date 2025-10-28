@@ -217,4 +217,60 @@ local Section = Tab:CreateSection("Diamond")
 
 
 local Tab = Window:CreateTab("Settings", 7066555021) 
-local Section = Tab:CreateSection("In-Game Map")
+local Section = Tab:CreateSection("Utilities")
+local Button = Tab:CreateButton({
+   Name = "Outline Selection Block (Best )",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Function/Select",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Crosshair",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Function/Crosshair",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "First Person Body View",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Function/First%20Person",true))()
+   Rayfield:Notify({
+Title = "MozCraft",
+Content = "First Person Body View Is now On! Try Zooming In And Check it out!",
+Duration = 2,
+Image = 17104600572
+})
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Sneak/Crouch",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Function/Crouch",true))()
+   end,
+})
+local Section = Tab:CreateSection("Map Generators")
+local Button = Tab:CreateButton({
+   Name = "Flat World Generator",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Generators/Flat",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "The Plains Generator (Beta)",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Generators/Plain",true))()
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "The Desert Generator",
+   Callback = function()
+   PlayClick()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/SkyeMoz/MozCraft/refs/heads/main/Main/Generators/Desert",true))()
+   end,
+})
