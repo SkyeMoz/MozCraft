@@ -1,0 +1,92 @@
+-- // White Minecraft-style "+" crosshair with first/third person transparency
+
+local settings = {
+    color = Color3.fromRGB(255, 255, 255),
+    thickness = 2,
+    length = 8,
+    opacity = 1,        -- fully visible in first person
+    thirdPersonOpacity = 0.5, -- opacity in third person
+    x_offset = 0,
+    y_offset = 0,
+    recenter = true
+}
+
+local cam = workspace.CurrentCamera or workspace:FindFirstChildOfClass("Camera")
+local player = game:GetService("Players").LocalPlayer
+
+getgenv().crosshair_x = getgenv().crosshair_x or {}
+getgenv().crosshair_y = getgenv().crosshair_y or {}
+
+local function draw(a1, a2)
+    local obj = Drawing.new(a1)
+    for i, v in pairs(a2) do 
+        obj[i] = v
+    end
+    return obj
+end
+
+-- Clear previous crosshair
+for _, tbl in pairs({getgenv().crosshair_x, getgenv().crosshair_y}) do
+    if tbl["Line"] then
+        tbl["Line"]:Remove()
+    end
+    if tbl["Connection"] then
+        tbl["Connection"]:Disconnect()
+    end
+end
+
+getgenv().crosshair_x = {}
+getgenv().crosshair_y = {}
+
+-- Horizontal line
+getgenv().crosshair_x["Line"] = draw("Line", {
+    To = Vector2.new(((cam.ViewportSize.X / 2) - settings.x_offset) - settings.length, (cam.ViewportSize.Y / 2) - settings.y_offset),
+    From = Vector2.new(((cam.ViewportSize.X / 2) - settings.x_offset) + settings.length, (cam.ViewportSize.Y / 2) - settings.y_offset),
+    Thickness = settings.thickness,
+    Color = settings.color,
+    Transparency = settings.opacity,
+    Visible = true
+})
+
+-- Vertical line
+getgenv().crosshair_y["Line"] = draw("Line", {
+    To = Vector2.new((cam.ViewportSize.X / 2) - settings.x_offset, ((cam.ViewportSize.Y / 2) - settings.y_offset) - settings.length),
+    From = Vector2.new((cam.ViewportSize.X / 2) - settings.x_offset, ((cam.ViewportSize.Y / 2) - settings.y_offset) + settings.length),
+    Thickness = settings.thickness,
+    Color = settings.color,
+    Transparency = settings.opacity,
+    Visible = true
+})
+
+-- Update function for recenter & first/third person transparency
+local function updateCrosshair()
+    local x = cam.ViewportSize.X / 2 - settings.x_offset
+    local y = cam.ViewportSize.Y / 2 - settings.y_offset
+
+    local transparency = settings.opacity
+    if player.CameraMode == Enum.CameraMode.Classic then
+        transparency = settings.thirdPersonOpacity
+    end
+
+    -- horizontal line
+    getgenv().crosshair_x["Line"].To = Vector2.new(x - settings.length, y)
+    getgenv().crosshair_x["Line"].From = Vector2.new(x + settings.length, y)
+    getgenv().crosshair_x["Line"].Transparency = transparency
+
+    -- vertical line
+    getgenv().crosshair_y["Line"].To = Vector2.new(x, y - settings.length)
+    getgenv().crosshair_y["Line"].From = Vector2.new(x, y + settings.length)
+    getgenv().crosshair_y["Line"].Transparency = transparency
+end
+
+-- Connect updates
+if settings.recenter then
+    getgenv().crosshair_x["Connection"] = cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateCrosshair)
+    getgenv().crosshair_y["Connection"] = cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateCrosshair)
+end
+
+-- Update every frame for camera mode change
+game:GetService("RunService").RenderStepped:Connect(updateCrosshair)
+
+-- Initial update
+updateCrosshair()
