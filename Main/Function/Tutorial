@@ -1,0 +1,171 @@
+-- SETTINGS
+local images = {
+    "rbxassetid://102962202271362", -- Image 1
+    "rbxassetid://102323949378639", -- Image 2
+    "rbxassetid://126077086287082"  -- Image 3
+}
+
+local clickSoundId = "rbxassetid://95995953662374" -- updated click sound
+
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SlideshowGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- MAIN FRAME (transparent)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0.8,0,0.8,0)
+frame.Position = UDim2.new(0.1,0,0.1,0)
+frame.BackgroundTransparency = 1
+frame.Parent = screenGui
+
+-- IMAGE LABEL (SQUARE)
+local imageLabel = Instance.new("ImageLabel")
+imageLabel.Size = UDim2.new(0.7,0,0.7,0)
+imageLabel.Position = UDim2.new(0.15,0,0.05,0)
+imageLabel.BackgroundTransparency = 1
+imageLabel.Image = images[1]
+imageLabel.ScaleType = Enum.ScaleType.Fit
+imageLabel.ClipsDescendants = true
+imageLabel.Parent = frame
+
+-- ROUND CORNERS
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(0.05,0)
+uicorner.Parent = imageLabel
+
+-- DOTS
+local dotFrame = Instance.new("Frame")
+dotFrame.Size = UDim2.new(1,0,0.05,0)
+dotFrame.Position = UDim2.new(0,0,0.77,0)
+dotFrame.BackgroundTransparency = 1
+dotFrame.Parent = frame
+
+local dots = {}
+local current = 1
+
+local function updateDots()
+    for i,dot in ipairs(dots) do
+        if i == current then
+            dot.Text = "•"
+            dot.TextColor3 = Color3.new(1,1,1)
+        else
+            dot.Text = "°"
+            dot.TextColor3 = Color3.fromRGB(200,200,200)
+        end
+    end
+end
+
+local spacing = 35
+local totalWidth = (#images - 1) * spacing
+for i = 1,#images do
+    local dot = Instance.new("TextButton")
+    dot.Size = UDim2.new(0,30,0,30)
+    dot.Position = UDim2.new(0.5, -totalWidth/2 + (i-1)*spacing, 0, 0)
+    dot.Text = "°"
+    dot.TextSize = 30
+    dot.Font = Enum.Font.SourceSansBold
+    dot.TextColor3 = Color3.fromRGB(200,200,200)
+    dot.BackgroundTransparency = 1
+    dot.Parent = dotFrame
+
+    dot.MouseButton1Click:Connect(function()
+        current = i
+        imageLabel.Image = images[current]
+        updateDots()
+        -- play click sound
+        local s = Instance.new("Sound", frame)
+        s.SoundId = clickSoundId
+        s:Play()
+    end)
+    table.insert(dots, dot)
+end
+
+updateDots()
+
+-- ARROWS
+local function createArrow(direction)
+    local arrow = Instance.new("TextButton")
+    arrow.Size = UDim2.new(0,50,0,50)
+    arrow.Position = UDim2.new(direction=="left" and 0.05 or 0.9,0,0.35,0)
+    arrow.Text = direction=="left" and "<" or ">"
+    arrow.Font = Enum.Font.SourceSansBold
+    arrow.TextSize = 40
+    arrow.TextColor3 = Color3.new(1,1,1)
+    arrow.BackgroundTransparency = 1
+    arrow.AutoButtonColor = true
+    arrow.Parent = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.3,0)
+    corner.Parent = arrow
+
+    return arrow
+end
+
+local leftArrow = createArrow("left")
+local rightArrow = createArrow("right")
+
+local clickSound = Instance.new("Sound", frame)
+clickSound.SoundId = clickSoundId
+
+-- IMAGE SWITCHING
+local function nextImage()
+    current = current + 1
+    if current > #images then current = 1 end
+    imageLabel.Image = images[current]
+    updateDots()
+    clickSound:Play()
+end
+
+local function prevImage()
+    current = current - 1
+    if current < 1 then current = #images end
+    imageLabel.Image = images[current]
+    updateDots()
+    clickSound:Play()
+end
+
+-- DOUBLE-CLICK DETECTION FOR RIGHT ARROW
+local lastClickTime = 0
+local doubleClickThreshold = 0.3 -- seconds
+
+rightArrow.MouseButton1Click:Connect(function()
+    local currentTime = tick()
+    if currentTime - lastClickTime <= doubleClickThreshold then
+        -- Double click detected, destroy GUI
+        screenGui:Destroy()
+    else
+        nextImage()
+    end
+    lastClickTime = currentTime
+end)
+
+leftArrow.MouseButton1Click:Connect(prevImage)
+imageLabel.MouseButton1Click:Connect(nextImage)
+
+-- CONTINUE BUTTON BELOW IMAGE
+local continueBtn = Instance.new("TextButton")
+continueBtn.Size = UDim2.new(0.3,0,0.08,0)
+continueBtn.Position = UDim2.new(0.35,0,0.88,0)
+continueBtn.Text = "Continue"
+continueBtn.Font = Enum.Font.SourceSansBold
+continueBtn.TextSize = 25
+continueBtn.TextColor3 = Color3.new(1,1,1)
+continueBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+continueBtn.AutoButtonColor = true
+continueBtn.Parent = frame
+
+local cornerBtn = Instance.new("UICorner")
+cornerBtn.CornerRadius = UDim.new(0.1,0)
+cornerBtn.Parent = continueBtn
+
+continueBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
+
+-- CLICK OUTSIDE IMAGE CLOSES GUI
+frame.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
