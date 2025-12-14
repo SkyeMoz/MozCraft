@@ -1,0 +1,191 @@
+-- Minecraft Join + Chat Notifications (Stacking) by Zynix x SkyeMoz
+-- Delta-friendly: measures text with TextService + accounts for UIScale
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local notifications = {}
+
+-- ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "MinecraftJoinGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- UIScale (you can change or remove)
+local scale = Instance.new("UIScale")
+scale.Scale = 0.8
+scale.Parent = gui
+
+-- SETTINGS
+local BASE_Y = 0.74
+local SPACING = 4 -- space between stacked messages (pixels)
+local WIDTH = 360 -- width in pixels
+local PADDING = 8 -- padding in pixels
+local FADE_TIME = 1.4
+local DISPLAY_TIME = 3
+
+-- Helper: compute text pixel height using TextService and UIScale handling
+local function measureTextHeight(textStr, font, textSize, availableWidth, uiScale)
+	uiScale = uiScale or 1
+	-- TextService wants the width in pixels *after* UIScale, so multiply.
+	local scaledWidth = math.floor((availableWidth) * uiScale)
+	-- Protect against tiny widths
+	if scaledWidth < 1 then scaledWidth = 1 end
+
+	-- Retry a few times if Delta hasn't resolved fonts yet
+	local measured
+	for attempt = 1, 4 do
+		measured = TextService:GetTextSize(textStr, textSize, font, Vector2.new(scaledWidth, math.huge))
+		-- measured.Y will be > 0 when valid; otherwise wait a frame and retry
+		if measured and measured.Y and measured.Y > 0 then
+			break
+		end
+		task.wait() -- allow engine a frame to resolve fonts/layout in Delta
+	end
+
+	-- Convert measured (which is scaled) back to unscaled pixels for frame sizing
+	local unscaledHeight = (measured and measured.Y and (measured.Y / uiScale)) or textSize
+	return math.ceil(unscaledHeight)
+end
+
+-- Update stacked positions (places newest at BASE_Y and older above it)
+local function updatePositions()
+	local totalHeight = 0
+	local viewportY = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 720
+	for i = #notifications, 1, -1 do
+		local frame = notifications[i]
+		local targetY = BASE_Y - (totalHeight / viewportY)
+		TweenService:Create(frame, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 6, targetY, 0)
+		}):Play()
+		-- Use the actual pixel height (Offset) when stacking
+		totalHeight = totalHeight + (frame.Size.Y.Offset or 0) + SPACING
+	end
+end
+
+-- Create notification
+local function createNotification(textContent, textColor)
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.new(0, WIDTH, 0, 32) -- temp
+	bg.Position = UDim2.new(0, 6, BASE_Y, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	bg.BackgroundTransparency = 0.45
+	bg.BorderSizePixel = 0
+	bg.ZIndex = 10
+	bg.Parent = gui
+
+	local text = Instance.new("TextLabel")
+	text.Name = "NotifText"
+	text.Size = UDim2.new(1, -PADDING*2, 1, 0) -- will be overridden after measure
+	text.Position = UDim2.new(0, PADDING, 0, PADDING/2)
+	text.BackgroundTransparency = 1
+	text.TextXAlignment = Enum.TextXAlignment.Left
+	text.TextYAlignment = Enum.TextYAlignment.Top
+	text.Text = textContent
+	text.TextColor3 = textColor or Color3.fromRGB(255, 221, 85)
+	-- Use a reliable font for measurement; Arcade is fine but SourceSans is commonly stable.
+	text.Font = Enum.Font.Arcade
+	text.TextSize = 18
+	text.TextStrokeTransparency = 0.4
+	text.TextWrapped = true
+	text.RichText = false
+	text.ClipsDescendants = false
+	text.ZIndex = 11
+	text.Parent = bg
+
+	-- Measure text height (account for UIScale)
+	local uiScaleVal = (scale and scale.Scale) or 1
+	local measuredHeight = measureTextHeight(textContent, text.Font, text.TextSize, WIDTH - PADDING*2, uiScaleVal)
+	-- Set actual sizes using measured height
+	text.Size = UDim2.new(1, -PADDING*2, 0, measuredHeight)
+	bg.Size = UDim2.new(0, WIDTH, 0, measuredHeight + PADDING)
+
+	table.insert(notifications, bg)
+	updatePositions()
+
+	-- Fade + remove after DISPLAY_TIME
+	task.delay(DISPLAY_TIME, function()
+		local tweenInfo = TweenInfo.new(FADE_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		TweenService:Create(bg, tweenInfo, {BackgroundTransparency = 1}):Play()
+		TweenService:Create(text, tweenInfo, {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+		task.wait(FADE_TIME + 0.1)
+		-- Remove from list
+		for i, frame in ipairs(notifications) do
+			if frame == bg then
+				table.remove(notifications, i)
+				break
+			end
+		end
+		if bg and bg.Parent then bg:Destroy() end
+		updatePositions()
+	end)
+end
+
+-- Join message
+local function createJoinMessage(name)
+	createNotification(name .. " joined the game", Color3.fromRGB(255, 221, 85))
+end
+
+-- Safe connect helper (Delta can behave weirdly if DisplayName isn't ready)
+local function safeConnectChatted(plr)
+	-- If player already has .Chatted event available, connect immediately, else wait a bit
+	if plr then
+		-- protected pcall in case Delta chat implementation differs
+		local ok, err = pcall(function()
+			plr.Chatted:Connect(function(msg)
+				createNotification("[" .. (plr.DisplayName or plr.Name) .. "] " .. msg, Color3.fromRGB(255, 255, 255))
+			end)
+		end)
+		if not ok then
+			-- fallback: attempt after a short wait
+			task.delay(0.2, function()
+				if plr and plr.Chatted then
+					plr.Chatted:Connect(function(msg)
+						createNotification("[" .. (plr.DisplayName or plr.Name) .. "] " .. msg, Color3.fromRGB(255, 255, 255))
+					end)
+				end
+			end)
+		end
+	end
+end
+
+-- Existing players
+for _, plr in ipairs(Players:GetPlayers()) do
+	if plr ~= player then
+		createJoinMessage(plr.Name)
+		safeConnectChatted(plr)
+	end
+end
+
+-- Player added
+Players.PlayerAdded:Connect(function(plr)
+	-- small delay so DisplayName/Chatted exist in Delta
+	task.delay(0.05, function()
+		createJoinMessage(plr.Name)
+		safeConnectChatted(plr)
+	end)
+end)
+
+-- Local player chat
+-- Player.Chatted should work; add pcall fallback
+if player then
+	local ok, _ = pcall(function()
+		player.Chatted:Connect(function(msg)
+			createNotification("[" .. (player.DisplayName or player.Name) .. "] " .. msg, Color3.fromRGB(255, 255, 255))
+		end)
+	end)
+	if not ok then
+		-- if Chatted not available immediately, wait and try once
+		task.delay(0.05, function()
+			if player and player.Chatted then
+				player.Chatted:Connect(function(msg)
+					createNotification("[" .. (player.DisplayName or player.Name) .. "] " .. msg, Color3.fromRGB(255, 255, 255))
+				end)
+			end
+		end)
+	end
+end
