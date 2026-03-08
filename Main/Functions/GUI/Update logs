@@ -1,0 +1,147 @@
+-- SERVICES
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "UpdateLogGUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- MAIN FRAME
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 400, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- ROUNDED CORNERS
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 20)
+corner.Parent = mainFrame
+
+-- DYNAMIC GRADIENT
+local uiGradient = Instance.new("UIGradient")
+uiGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 220, 220)),  -- Light Gray
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 150, 150)), -- Gray
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 50))       -- Dark Gray
+}
+uiGradient.Rotation = 0
+uiGradient.Parent = mainFrame
+
+-- Gradient rotation tween
+local rotationTween = TweenService:Create(uiGradient, TweenInfo.new(10, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true), {Rotation = 360})
+rotationTween:Play()
+
+-- DRAG FUNCTION (PC + MOBILE)
+local dragging = false
+local dragInput, startPos, startPosFrame
+
+local function update(input)
+    local delta = input.Position - startPos
+    mainFrame.Position = UDim2.new(startPosFrame.X.Scale, startPosFrame.X.Offset + delta.X,
+                                   startPosFrame.Y.Scale, startPosFrame.Y.Offset + delta.Y)
+end
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        startPos = input.Position
+        startPosFrame = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if dragging and dragInput then
+        update(dragInput)
+    end
+end)
+
+-- TITLE
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 50)
+title.Position = UDim2.new(0, 10, 0, 10)
+title.BackgroundTransparency = 1
+title.Text = "Update Log"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 28
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Parent = mainFrame
+
+-- SUBTITLE
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -20, 0, 30)
+subtitle.Position = UDim2.new(0, 10, 0, 60)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "The 1.0.2 Update Has arrived! 📢"
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextSize = 20
+subtitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = mainFrame
+
+-- DESCRIPTION
+local description = Instance.new("TextLabel")
+description.Size = UDim2.new(1, -20, 1, -160)
+description.Position = UDim2.new(0, 10, 0, 100)
+description.BackgroundTransparency = 1
+description.Text = [[
+-New UI Inventory 👜
+-Hand Swing R6 & R15 ✋
+-Added Service for secure & verification 🔐
+-New Sounds 🔊
+-New Food & Items 🍲
+-Working Functional Blocks! 🧰
+-New 70+ Blocks! 🚧
+-New Generator Plain 🌎
+-Added PC Support! 💻 
+-5 New Addons! 📚
+-60+ More Bug Fixes, Features, etc. 🦊
+]]
+description.Font = Enum.Font.Gotham
+description.TextSize = 16
+description.TextColor3 = Color3.fromRGB(200, 200, 200)
+description.TextWrapped = true
+description.TextYAlignment = Enum.TextYAlignment.Top
+description.TextXAlignment = Enum.TextXAlignment.Left
+description.Parent = mainFrame
+
+-- CONTINUE BUTTON
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 150, 0, 40)
+button.Position = UDim2.new(0.5, -75, 1, -50)
+button.AnchorPoint = Vector2.new(0.5, 0)
+button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+button.Text = "Continue"
+button.Font = Enum.Font.GothamBold
+button.TextSize = 20
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+-- Rounded button
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 12)
+buttonCorner.Parent = button
+
+button.Parent = mainFrame
+
+-- BUTTON CLICK
+button.MouseButton1Click:Connect(function()
+    mainFrame:TweenPosition(UDim2.new(0.5, -200, 1.5, -250), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true, function()
+        screenGui:Destroy()
+    end)
+end)
