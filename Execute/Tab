@@ -1,0 +1,44 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local ClickSound = Instance.new("Sound")
+ClickSound.SoundId = "rbxassetid://535716488"
+ClickSound.Volume = 1
+ClickSound.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+function PlayClick()
+    ClickSound:Play()
+end
+
+local Window = Rayfield:CreateWindow({
+    Name = "MozCraft",
+    Icon = 76901954179857, 
+    LoadingTitle = "i",
+    LoadingSubtitle = "SkyeMoz",
+    ShowText = "Creative UI",
+    Theme = "DarkBlue",
+    ToggleUIKeybind = "Z",
+    DisableRayfieldPrompts = false,
+    DisableBuildWarnings = false,
+
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil, 
+        FileName = "Hub"
+    },
+
+    Discord = {
+        Enabled = false, 
+        Invite = "wKVgf2EDGZ",
+        RememberJoins = true
+    },
+
+    KeySystem = false,  
+    KeySettings = {
+        Title = "MozCraft ",
+        Subtitle = "Key System",
+        Note = "Current Key is Unavailable.",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = {"Key_41414"}  
+    }
+})
